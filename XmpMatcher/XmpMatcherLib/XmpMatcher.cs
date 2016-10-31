@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using NLog;
 
 namespace gbd.XmpMatcher.Lib
@@ -12,9 +13,9 @@ namespace gbd.XmpMatcher.Lib
 
 
         private ICollection<FileInfo> _unsortedFiles;
-        private ICollection<KeyValuePair<FileInfo, MatchingAttributes> _xmpFiles = new List<KeyValuePair<FileInfo, MatchingAttributes>(10000);
-        private ICollection<KeyValuePair<FileInfo, MatchingAttributes> _imgFiles = new List<KeyValuePair<FileInfo, MatchingAttributes>(10000);
 
+        private IDictionary<FileInfo, MatchingAttributes> _xmpFiles = new Dictionary<FileInfo, MatchingAttributes>();
+        private IDictionary<FileInfo, MatchingAttributes> _imgFiles = new Dictionary<FileInfo, MatchingAttributes>();
 
         public XmpMatcher(FileInfo[] inputFiles)
         {
@@ -52,11 +53,11 @@ namespace gbd.XmpMatcher.Lib
                 switch (FileDiscriminator.Process(file))
                 {
                     case FileType.Xmp:
-                        _xmpFiles.Add(new KeyValuePair<FileInfo, MatchingAttributes>(file, (MatchingAttributes) null));
+                        _xmpFiles[file] = GetXmpAttributes(file);
                         break;
 
                     case FileType.Image:
-                        _imgFiles.Add(new KeyValuePair<FileInfo, MatchingAttributes>(file, (MatchingAttributes) null));
+                        _imgFiles[file] = GetImageAttributes(file);
                         break;
 
                     case FileType.Unknown:
@@ -67,25 +68,24 @@ namespace gbd.XmpMatcher.Lib
             }
         }
 
-        public void ExtractInfoFromFiles()
+        private MatchingAttributes GetXmpAttributes(FileInfo file)
         {
-            foreach (var filePair in _imgFiles)
-            {
-                filePair.Value = GetImageAttribute(filePair.Key);
-            }
+            var xmp = file.OpenText().ReadToEnd();
 
-            foreach (var filePair in _xmpFiles)
+            var regexDateTime = new Regex("exif:DateTimeOriginal=.(.*?).");
+            var regexX = new Regex("exif:FocalPlaneXResolution=.(.*?).");
+            var regexY = new Regex("exif:FocalPlaneYResolution=.(.*?).");
+
+            var attribs = new MatchingAttributes()
             {
-                filePair.Value = GetXmpAttribute(filePair.Key);
-            }
+                DateShutter = DateTime.Parse(regexDateTime.Match(xmp).Groups[1].Value),
+                FocalPlaneXResolution = regexX.Match(xmp).Groups[1].Value,
+                FocalPlaneYResolution = regexY.Match(xmp).Groups[1].Value,
+            };
+
+            Logger.Debug($"File {file.Name} has attributes {attribs}");
+
+            return attribs;
         }
-    }
-
-    public class MatchingAttributes
-    {
-        public DateTime DateShutter;
-        public string FocalPlaneXResolution;
-        public string FocalPlaneYResolution;
-
     }
 }
