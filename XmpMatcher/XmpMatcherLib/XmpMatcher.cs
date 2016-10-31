@@ -1,9 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using NLog;
+using ExifLib;
+
+
 
 namespace gbd.XmpMatcher.Lib
 {
@@ -68,7 +70,29 @@ namespace gbd.XmpMatcher.Lib
             }
         }
 
-        private MatchingAttributes GetXmpAttributes(FileInfo file)
+        private static MatchingAttributes GetImageAttributes(FileInfo file)
+        {
+            var attribs = new MatchingAttributes();
+
+            using (var reader = new ExifReader(file.FullName))
+            {
+                if (reader.GetTagValue(ExifTags.DateTimeOriginal, out attribs.DateShutter) == false)
+                    Logger.Error($"Cannot get dateTimeOriginal from {file.Name}");
+
+                if (reader.GetTagValue(ExifTags.FocalPlaneXResolution, out attribs.FocalPlaneXResolution))
+                    Logger.Error($"Cannot get FocalPlaneXResolutionfrom {file.Name}");
+
+                if (reader.GetTagValue(ExifTags.FocalPlaneYResolution, out attribs.FocalPlaneYResolution))
+                    Logger.Error($"Cannot get FocalPlaneYResolutionfrom {file.Name}");
+
+            }
+
+            Logger.Debug($"Read attribs from {file.Name} : {attribs}");
+
+            return attribs;
+        }
+
+        private static MatchingAttributes GetXmpAttributes(FileInfo file)
         {
             var xmp = file.OpenText().ReadToEnd();
 
