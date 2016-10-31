@@ -64,9 +64,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\Downloads\Exiflib\Exiflib\ExifLib.csproj">
-      <Project>{c878a95f-e695-42fc-a714-e47df6515679}</Project>
-      <Name>ExifLib</Name>
+    <ProjectReference Include="..\ExifLibrary\ExifLibrary.csproj">
+      <Project>{c29ba585-e27b-4ad0-9ad1-490b5e0e2a5e}</Project>
+      <Name>ExifLibrary</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using ExifLibrary;
 using NLog;
-using ExifLib;
 
 
 
@@ -72,20 +72,16 @@ namespace gbd.XmpMatcher.Lib
 
         private static MatchingAttributes GetImageAttributes(FileInfo file)
         {
-            var attribs = new MatchingAttributes();
+            var exif = ExifFile.Read(file.FullName);
 
-            using (var reader = new ExifReader(file.FullName))
+            var attribs = new MatchingAttributes
             {
-                if (reader.GetTagValue(ExifTags.DateTimeOriginal, out attribs.DateShutter) == false)
-                    Logger.Error($"Cannot get dateTimeOriginal from {file.Name}");
+                DateShutter = DateTime.Parse(exif.Properties[ExifTag.DateTimeOriginal].Value.ToString()),
+                FocalPlaneXResolution = exif.Properties[ExifTag.FocalPlaneXResolution].Value.ToString(),
+                FocalPlaneYResolution = exif.Properties[ExifTag.FocalPlaneYResolution].Value.ToString(),
 
-                if (reader.GetTagValue(ExifTags.FocalPlaneXResolution, out attribs.FocalPlaneXResolution))
-                    Logger.Error($"Cannot get FocalPlaneXResolutionfrom {file.Name}");
+            };
 
-                if (reader.GetTagValue(ExifTags.FocalPlaneYResolution, out attribs.FocalPlaneYResolution))
-                    Logger.Error($"Cannot get FocalPlaneYResolutionfrom {file.Name}");
-
-            }
 
             Logger.Debug($"Read attribs from {file.Name} : {attribs}");
 
