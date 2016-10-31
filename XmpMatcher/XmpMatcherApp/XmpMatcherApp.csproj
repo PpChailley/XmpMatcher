@@ -53,10 +53,6 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ExifLibrary\ExifLibrary.csproj">
-      <Project>{c29ba585-e27b-4ad0-9ad1-490b5e0e2a5e}</Project>
-      <Name>ExifLibrary</Name>
-    </ProjectReference>
     <ProjectReference Include="..\XmpMatcherLib\XmpMatcherLib.csproj">
       <Project>{1BB5E0D7-2AB6-4035-85FA-68B267F4F9CF}</Project>
       <Name>XmpMatcherLib</Name>
