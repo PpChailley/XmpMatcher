@@ -16,12 +16,9 @@ namespace gbd.XmpMatcher.Lib
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
 
-        private ICollection<FileInfo> _unsortedFiles;
+        private readonly ICollection<FileInfo> _unsortedFiles;
 
-        //private IDictionary<FileInfo, MatchingAttributes> _xmpFiles = new Dictionary<FileInfo, MatchingAttributes>();
-        //private IDictionary<FileInfo, MatchingAttributes> _imgFiles = new Dictionary<FileInfo, MatchingAttributes>();
-
-        private IDictionary<MatchingAttributes, ICollection<FileInfo>> _byAttributes =  new Dictionary<MatchingAttributes, ICollection<FileInfo>>();
+        private readonly IDictionary<MatchingAttributes, ICollection<FileInfo>> _byAttributes =  new Dictionary<MatchingAttributes, ICollection<FileInfo>>();
 
         public XmpMatcher(FileInfo[] inputFiles)
         {
@@ -54,6 +51,9 @@ namespace gbd.XmpMatcher.Lib
         {
             Logger.Info($"Sorting {_unsortedFiles.Count} files into images and XMP");
 
+            int nbProcessedFiles = 0;
+            int percentAdvance = _unsortedFiles.Count/100 + 1 ;
+
             foreach (var file in _unsortedFiles)
             {
                 MatchingAttributes attribs = null;
@@ -79,6 +79,14 @@ namespace gbd.XmpMatcher.Lib
                 else
                     _byAttributes[attribs] = new List<FileInfo>() { file };
 
+
+                nbProcessedFiles ++;
+                Logger.Debug($"Parsed and ordered file '{file.Name}' as '{attribs}");
+                if (nbProcessedFiles % percentAdvance == 0)
+                {
+                    Logger.Info($"Processed {nbProcessedFiles} files ({100*nbProcessedFiles/_unsortedFiles.Count} %)");
+                }
+
             }
         }
 
@@ -87,14 +95,11 @@ namespace gbd.XmpMatcher.Lib
             IReadOnlyList<Directory> dirs = ImageMetadataReader.ReadMetadata(file.FullName);
             Directory subIfd = dirs.Single(d => d.Name.Equals("Exif SubIFD"));
 
-            var dateTag = subIfd.Tags.Single(t => t.Name.Equals("Date/Time Original")).Description;
-            var parsedExifOriginalTime = TryParseExifDateTime(dateTag, file);
-
             var attribs = new MatchingAttributes
             {
-                FocalPlaneXResolution = subIfd.Tags.Single(t => t.Name.Equals("Focal Plane X Resolution")).Description,
-                FocalPlaneYResolution = subIfd.Tags.Single(t => t.Name.Equals("Focal Plane Y Resolution")).Description,
-                DateShutter = parsedExifOriginalTime
+                FocalPlaneXResolution = subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Focal Plane X Resolution"))?.Description,
+                FocalPlaneYResolution = subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Focal Plane Y Resolution"))?.Description,
+                DateShutter = DateTimeManager.Parse(subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Date/Time Original"))?.Description)
             };
 
             
@@ -103,48 +108,18 @@ namespace gbd.XmpMatcher.Lib
             return attribs;
         }
 
-        private static DateTime TryParseExifDateTime(string dateTag, FileInfo file)
-        {
-            DateTime parsedExifOriginalTime;
-            try
-            {
-                parsedExifOriginalTime = DateTime.ParseExact(dateTag, "yyyy:MM:dd HH:mm:ss",
-                    CultureInfo.InvariantCulture);
-            }
-            catch (FormatException fe)
-            {
-                Logger.Warn($"Problem parsing dateTime '{dateTag}' for file {file.Name} ... Trying fallbacks", fe);
-                try
-                {
-                    var dateFormatReader = new Regex(@"(\d+):(\d+):(\d+)\s+(\d+):(\d+):(\d+)");
-                    var regexGroups = dateFormatReader.Match(dateTag).Groups;
-                    parsedExifOriginalTime = new DateTime(int.Parse(regexGroups[1].Value),
-                        int.Parse(regexGroups[2].Value),
-                        int.Parse(regexGroups[3].Value),
-                        int.Parse(regexGroups[4].Value),
-                        int.Parse(regexGroups[5].Value),
-                        int.Parse(regexGroups[6].Value));
-                }
-                catch (Exception e)
-                {
-                    Logger.Error(e, $"DateTime decoding failed twice '{dateTag}' for file {file.Name} ");
-                    throw;
-                }
-            }
-            return parsedExifOriginalTime;
-        }
 
         private static MatchingAttributes GetXmpAttributes(FileInfo file)
         {
             var xmp = file.OpenText().ReadToEnd();
 
-            var regexDateTime = new Regex("exif:DateTimeOriginal=.(.*?).");
-            var regexX = new Regex("exif:FocalPlaneXResolution=.(.*?).");
-            var regexY = new Regex("exif:FocalPlaneYResolution=.(.*?).");
+            
+            var regexX = new Regex("exif:FocalPlaneXResolution=.(.*?).$", RegexOptions.Multiline);
+            var regexY = new Regex("exif:FocalPlaneYResolution=.(.*?).$", RegexOptions.Multiline);
 
             var attribs = new MatchingAttributes()
             {
-                DateShutter = DateTime.Parse(regexDateTime.Match(xmp).Groups[1].Value),
+                DateShutter = DateTimeManager.FindAndParse(xmp, @"exif:DateTimeOriginal="),
                 FocalPlaneXResolution = regexX.Match(xmp).Groups[1].Value,
                 FocalPlaneYResolution = regexY.Match(xmp).Groups[1].Value,
             };
@@ -152,6 +127,42 @@ namespace gbd.XmpMatcher.Lib
             Logger.Debug($"File {file.Name} has attributes {attribs}");
 
             return attribs;
+        }
+
+
+        public void ProcessCollisions()
+        {
+            var coincidences = _byAttributes.Where(kvp => kvp.Value.Count >= 2);
+            var oneOnOneMatch = coincidences.Where(kvp => IsOneOnOne(kvp.Value));
+
+            Logger.Info($"Found {coincidences.Count()} coincidences, of which {oneOnOneMatch.Count()} 1-on-1 match");
+
+
+        }
+
+        private bool IsOneOnOne(ICollection<FileInfo> files)
+        {
+            if (files.Count != 2)
+                return false;
+
+            bool foundXmp = false;
+            bool foundImage = false;
+
+            foreach (var file in files)
+            {
+                switch (FileDiscriminator.Process(file))
+                {
+                    case FileType.Image:
+                        foundImage = true;
+                        break;
+
+                    case FileType.Xmp:
+                        foundXmp = true;
+                        break;
+                }
+            }
+
+            return (foundImage && foundXmp);
         }
     }
 }

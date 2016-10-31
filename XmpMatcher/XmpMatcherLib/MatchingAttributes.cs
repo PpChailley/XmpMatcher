@@ -16,5 +16,18 @@ namespace gbd.XmpMatcher.Lib
         {
             return $"({DateShutter}, {FocalPlaneXResolution}, {FocalPlaneYResolution})";
         }
+
+        public override int GetHashCode()
+        {
+            return DateShutter.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is MatchingAttributes == false)
+                return false;
+
+            return DateShutter.Equals(((MatchingAttributes) obj).DateShutter);
+        }
     }
 }

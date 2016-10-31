@@ -55,7 +55,7 @@ namespace gbd.XmpMatcher.Lib
                     break;
 
                 case FileType.Xmp:
-                        allTestsPass &= _f.Extension.Equals("xmp");
+                        allTestsPass &= _f.Extension.Equals(".xmp");
                     break;
 
                 case FileType.Unknown:
@@ -77,7 +77,7 @@ namespace gbd.XmpMatcher.Lib
             if (size > 1*1024*1024 && size < 40*1024*1024)
                 _guessed = FileType.Image;
 
-            else if (size < 30*1024 && _f.Extension.Equals("xmp"))
+            else if (size < 30*1024 && _f.Extension.Equals(".xmp"))
                 _guessed = FileType.Xmp;
             else
                 _guessed = FileType.Image;
