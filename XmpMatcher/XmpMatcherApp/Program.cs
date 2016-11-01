@@ -23,16 +23,16 @@ namespace gbd.XmpMatcher.App
             var extensions = FileDiscriminator.IMAGE_EXTENSIONS;
 
 
-            files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)\try 001 (no mpx-flac)\0000-0150\recup_dir.10", "*.xmp", extensions));
+            //files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)\try 001 (no mpx-flac)\0000-0150\recup_dir.10", "*.xmp", extensions));
             
 
-            /*
+            
             files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", extensions));
             files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", new string[]{"*.xmp"} ));
 
             files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", extensions));
             files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", new string[] { "*.xmp" }));
-            */
+            
 
             /*files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.144", "*.xmp"));
             files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.xmp"));

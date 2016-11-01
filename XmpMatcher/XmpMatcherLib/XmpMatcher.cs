@@ -58,26 +58,34 @@ namespace gbd.XmpMatcher.Lib
             {
                 MatchingAttributes attribs = null;
 
-                switch (FileDiscriminator.Process(file))
+                try
                 {
-                    case FileType.Xmp:
-                        attribs = GetXmpAttributes(file);
-                        break;
+                    switch (FileDiscriminator.Process(file))
+                    {
+                        case FileType.Xmp:
+                            attribs = GetXmpAttributes(file);
+                            break;
 
-                    case FileType.Image:
-                        attribs = GetImageAttributes(file);
-                        break;
+                        case FileType.Image:
+                            attribs = GetImageAttributes(file);
+                            break;
 
-                    case FileType.Unknown:
-                    default:
-                        Logger.Warn($"File '{file.Name}' is not recognized");
-                        continue;
+                        case FileType.Unknown:
+                        default:
+                            Logger.Warn($"File '{file.Name}' is not recognized");
+                            continue;
+                    }
+
+                    if (_byAttributes.ContainsKey(attribs))
+                        _byAttributes[attribs].Add(file);
+                    else
+                        _byAttributes[attribs] = new List<FileInfo>() {file};
+                }
+                catch (FormatException fe)
+                {
+                    Logger.Warn(fe, $"Some data was not recognized in {file.Name} ({file.DirectoryName}). Skipping");
                 }
 
-                if (_byAttributes.ContainsKey(attribs))
-                    _byAttributes[attribs].Add(file);
-                else
-                    _byAttributes[attribs] = new List<FileInfo>() { file };
 
 
                 nbProcessedFiles ++;
