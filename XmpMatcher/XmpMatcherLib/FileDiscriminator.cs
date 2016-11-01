@@ -12,7 +12,13 @@ namespace gbd.XmpMatcher.Lib
         private FileInfo _f;
         private FileType _guessed;
 
-        public static readonly string[] IMAGE_EXTENSIONS = {".jpg", ".cr2", ".tif", ".dng", ".png", ".gif"};
+        public static readonly string[] IMAGE_EXTENSIONS = {    ".jpg", ".JPG", ".jpeg", ".JPEG",
+                                                                ".cr2", ".CR2",
+                                                                ".tif", ".TIF",
+                                                                ".dng", ".DNG",
+                                                                ".png", ".PNG",
+                                                                ".gif", ".GIF"
+        };
 
         private FileDiscriminator(FileInfo f)
         {

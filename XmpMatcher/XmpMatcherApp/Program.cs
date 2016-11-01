@@ -15,30 +15,10 @@ namespace gbd.XmpMatcher.App
 
         public static void Main(string[] args)
         {
-            var files = new List<string>(10000);
-
             Logger.Info("Starting Xmp Matcher App");
 
-            var baseDir = @"R:\StoreDisk recovery\RECOVERED critical\run 2016-10-26 from dd try 000";
-            var extensions = FileDiscriminator.IMAGE_EXTENSIONS;
-
-
-            //files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)\try 001 (no mpx-flac)\0000-0150\recup_dir.10", "*.xmp", extensions));
-            
-
-            
-            //files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", extensions));
-            //files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", new string[]{"*.xmp"} ));
-
-            files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", extensions));
-            files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", new string[] { "*.xmp" }));
-            
-
-            /*files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.144", "*.xmp"));
-            files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.xmp"));
-            files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.jpg"));
-            files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.cr2"));
-            */
+            var files = new List<string>(10000);
+            ConfigurePaths(files);
 
             var matcher = new Lib.XmpMatcher(files);
             matcher.SortFiles();
@@ -48,10 +28,39 @@ namespace gbd.XmpMatcher.App
             var collisionMgr = matcher.MakeCollisionsManager();
 
             collisionMgr.DetectCollisions();
-            collisionMgr.LinkXmpAndImagePairs();
+            collisionMgr.LinkXmpAndImagePairs(@"R:\StoreDisk recovery\RECOVERED critical\Relinked pairs");
             collisionMgr.ReportUnfixedCollisions();
 
 
+        }
+
+        private static void ConfigurePaths(List<string> files)
+        {
+            var baseDir = @"R:\StoreDisk recovery\RECOVERED critical\run 2016-10-26 from dd try 000";
+            var extensions = FileDiscriminator.IMAGE_EXTENSIONS;
+
+
+            //files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)\try 001 (no mpx-flac)\0000-0150\recup_dir.10", "*.xmp", extensions));
+
+
+            /*  REAL CASE SEARCHING
+            files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", extensions));
+            files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", new string[]{"*.xmp"} ));
+
+            files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", extensions));
+            files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", new string[] { "*.xmp" }));
+            */
+
+            /* Test with already matching files */
+            var path = @"D:\Photo\TempStoreWhileStoreDriveInMaintenance";
+            files.AddRange(IncludeFilesIn(path, "*.xmp", extensions));
+
+
+            /*files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.144", "*.xmp"));
+           files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.xmp"));
+           files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.jpg"));
+           files.AddRange(IncludeFilesIn(baseDir + "\\recup_dir.77", "*.cr2"));
+           */
         }
 
         private static ICollection<string> IncludeFilesIn(string path, string mask, string [] otherMasks = null)
@@ -70,11 +79,14 @@ namespace gbd.XmpMatcher.App
 
             foreach (var mask in masks)
             {
+
                 Logger.Debug($"searching for {mask} in directory {path}");
-                files.AddRange(Directory.GetFiles(path, mask, SearchOption.AllDirectories));
+                var curFiles = Directory.GetFiles(path, mask, SearchOption.AllDirectories);
+                files.AddRange(curFiles);
+                Logger.Info($"Added {curFiles.Length} files '{mask}' in {path}");
             }
 
-            Logger.Info($"Added {files.Count} files '{masks}' in {path}");
+            
             return files;
         }
     }

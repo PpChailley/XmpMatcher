@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,124 +11,141 @@ namespace gbd.XmpMatcher.Lib
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-        private struct ImageAndXmp
+
+        internal class Collision
         {
-            public FileInfo Image;
-            public FileInfo Xmp;
+            public MatchingAttributes Attribs;
+            public ICollection<FileInfo> Xmp = new List<FileInfo>();
+            public ICollection<FileInfo> Images = new List<FileInfo>();
+
+            public class Description
+            {
+                public int XmpAmount = 0;
+                public int ImagesAmount = 0;
+
+                public BalanceLevel Balance
+                {
+                    get
+                    {
+                        if (ImagesAmount == 0 && XmpAmount == 0)
+                            return BalanceLevel.Empty;
+                        else if (ImagesAmount > 0 && XmpAmount == 0)
+                            return BalanceLevel.ImagesOnly;
+                        else if (ImagesAmount == 0 && XmpAmount > 0)
+                            return BalanceLevel.XmpOnly;
+                        else if (ImagesAmount == 1 && XmpAmount == 1)
+                            return BalanceLevel.Balanced;
+                        else if (ImagesAmount == 1 && XmpAmount > 1)
+                            return BalanceLevel.SeveralXmpForOneImage;
+                        else if (ImagesAmount > 1)
+                            return BalanceLevel.SeveralImages;
+                        else
+                            return BalanceLevel.Unknown;
+            }
+        }
+            }
+
+            public Description Desc => new Description() {XmpAmount = Xmp.Count, ImagesAmount = Images.Count};
+
+            public Collision(KeyValuePair<MatchingAttributes, ICollection<FileInfo>> kvp)
+            {
+                Attribs = kvp.Key;
+
+                foreach (var fileInfo in kvp.Value)
+                {
+                    switch (FileDiscriminator.Process(fileInfo))
+                    {
+                        case FileType.Image:
+                            Images.Add(fileInfo);
+                            break;
+
+                        case FileType.Xmp:
+                            Xmp.Add(fileInfo);
+                            break;
+
+                        case FileType.Unknown:
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+            }
+
+            public enum BalanceLevel
+            {
+                Empty,
+                ImagesOnly,
+                XmpOnly,
+                Balanced,
+                SeveralImages,
+                SeveralXmpForOneImage,
+                Unknown,
+            }
         }
 
 
 
-        public IDictionary<MatchingAttributes, ICollection<FileInfo>> ByAttributes;
-
-        private ICollection<KeyValuePair<MatchingAttributes, ICollection<FileInfo>>> _collisions;
-        private ICollection<KeyValuePair<MatchingAttributes, ICollection<FileInfo>>> _oneOnOneMatch;
-        private ICollection<KeyValuePair<MatchingAttributes, ICollection<FileInfo>>> _moveFileFailed = new List<KeyValuePair<MatchingAttributes, ICollection<FileInfo>>>();
-        private ICollection<KeyValuePair<MatchingAttributes, ICollection<FileInfo>>> _moveFileSucceeded = new List<KeyValuePair<MatchingAttributes, ICollection<FileInfo>>>();
+        internal IDictionary<MatchingAttributes, Collision> ByAttributes;
+        internal IDictionary<Collision.BalanceLevel, List<Collision>> ByContentsBalance;
 
 
         internal CollisionsManager(IDictionary<MatchingAttributes, ICollection<FileInfo>> byAttributes)
         {
-            ByAttributes = byAttributes;
+            ByAttributes = new Dictionary<MatchingAttributes, Collision>();
+            ByContentsBalance = new Dictionary<Collision.BalanceLevel, List<Collision>>();
+            foreach (var kvp in byAttributes)
+            {
+                ByAttributes[kvp.Key] = new Collision(kvp);
+            }
         }
 
         public void DetectCollisions()
         {
             Logger.Info($"Detecting collisions (files with same metadata)");
 
-            _collisions = ByAttributes.Where(kvp => kvp.Value.Count >= 2).ToArray();
-            Logger.Info($"Found {_collisions.Count()} group of colliding files out of {ByAttributes} file groups");
 
-            _oneOnOneMatch = _collisions.Where( kvp => IsOneOnOne(kvp.Value)).ToArray();
-            Logger.Info($"Found {_oneOnOneMatch.Count()} collisions with exactly one XMP and one image");
+            // see http://stackoverflow.com/a/40365237/1121983
+            ByContentsBalance  = ByAttributes.Values
+                            .GroupBy(coll => coll.Desc.Balance)
+                            .ToDictionary( group => group.Key, group => group.ToList());
 
-        }
-
-        private bool IsOneOnOne(ICollection<FileInfo> files)
-        {
-            if (files.Count != 2)
-                return false;
-
-            bool foundXmp = false;
-            bool foundImage = false;
-
-            foreach (var file in files)
+            foreach (var contentBalance in ByContentsBalance.Keys)
             {
-                switch (FileDiscriminator.Process(file))
-                {
-                    case FileType.Image:
-                        foundImage = true;
-                        break;
-
-                    case FileType.Xmp:
-                        foundXmp = true;
-                        break;
-                }
+                Logger.Info($"Found {ByContentsBalance[contentBalance].Count} groups of files {contentBalance}");
             }
 
-            return (foundImage && foundXmp);
         }
 
 
-        private ImageAndXmp MakeImageAndXmpPair(IEnumerable<FileInfo> files)
-        {
-            var pair = new ImageAndXmp();
 
-            foreach (var fileInfo in files)
-            {
-                switch (FileDiscriminator.Process(fileInfo))
-                {
-                    case FileType.Image:
-                        if (pair.Image != null)
-                            throw new InvalidOperationException();
-                        pair.Image = fileInfo;
-                        break;
 
-                    case FileType.Xmp:
-                        if (pair.Xmp != null)
-                            throw new InvalidOperationException();
-                        pair.Xmp = fileInfo;
-                        break;
-
-                    case FileType.Unknown:
-                    default:
-                        throw new InvalidOperationException();
-                }
-            }
-
-            if (pair.Xmp == null || pair.Image == null)
-                throw new InvalidOperationException();
-
-            Logger.Debug($"Identified XMP/image pair: {pair.Xmp.Name} / {pair.Image.Name}");
-
-            return pair;
-        }
-
-        public void LinkXmpAndImagePairs()
+        public void LinkXmpAndImagePairs(string destinationPath)
         {
             Logger.Info($"Start linking XMP and images");
 
-            foreach (var kvp in _oneOnOneMatch)
+            var collisionsToProcess = new List<Collision>();
+            if (ByContentsBalance.ContainsKey(Collision.BalanceLevel.Balanced))
+                collisionsToProcess.AddRange(ByContentsBalance[Collision.BalanceLevel.Balanced]);
+
+            foreach (var collision in collisionsToProcess)
             {
                 try
                 {
-                    ImageAndXmp pair = MakeImageAndXmpPair(kvp.Value);
 
-                    var oldName = pair.Xmp.Name;
-                    var oldPath = pair.Xmp.Directory;
-                    var newXmpName = pair.Image.FullName + ".xmp";
+                    var xmpOldName = collision.Xmp.Single().Name;
+                    var xmpOldPath = collision.Xmp.Single().Directory;
+                    var imageOldName = collision.Images.Single().Name;
+                    var imageOldPath = collision.Images.Single().Directory;
 
-//                pair.Xmp.MoveTo(newXmpName);
+                    collision.Images.Single().MoveTo(destinationPath);
+                    collision.Xmp.Single().MoveTo($"{destinationPath}\\{imageOldName}.xmp");
 
-                    _moveFileSucceeded.Add(kvp);
-                    Logger.Info($"Moved {oldName} ({oldPath}) to {newXmpName}");
+                    Logger.Info($"Moved together {xmpOldName} ({xmpOldPath}) and {imageOldName} ({imageOldPath})");
                 }
                 catch (Exception e)
                 {
-                    Logger.Warn(e, $"Failed moving {kvp.Value.FirstOrDefault()?.Name}");
-                    _moveFileFailed.Add(kvp);
+                    Logger.Warn(e, $"Failed moving {collision.Xmp.FirstOrDefault()?.Name} or {collision.Images.FirstOrDefault()?.Name}");
+                    // _moveFileFailed.Add(kvp);
                 }
-
             }
         }
 
