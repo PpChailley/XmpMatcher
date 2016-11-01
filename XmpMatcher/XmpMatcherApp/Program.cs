@@ -27,8 +27,8 @@ namespace gbd.XmpMatcher.App
             
 
             
-            files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", extensions));
-            files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", new string[]{"*.xmp"} ));
+            //files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", extensions));
+            //files.AddRange(IncludeFilesIn(@"R:\StoreDisk recovery\RECOVERED critical", new string[]{"*.xmp"} ));
 
             files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", extensions));
             files.AddRange(IncludeFilesIn(@"D:\StoreDiskRecovery (more files on another disk)", new string[] { "*.xmp" }));
@@ -45,7 +45,11 @@ namespace gbd.XmpMatcher.App
 
             Logger.Info("All files sorted");
 
-            matcher.ProcessCollisions();
+            var collisionMgr = matcher.MakeCollisionsManager();
+
+            collisionMgr.DetectCollisions();
+            collisionMgr.LinkXmpAndImagePairs();
+            collisionMgr.ReportUnfixedCollisions();
 
 
         }

@@ -17,7 +17,6 @@ namespace gbd.XmpMatcher.Lib
 
 
         private readonly ICollection<FileInfo> _unsortedFiles;
-
         private readonly IDictionary<MatchingAttributes, ICollection<FileInfo>> _byAttributes =  new Dictionary<MatchingAttributes, ICollection<FileInfo>>();
 
         public XmpMatcher(FileInfo[] inputFiles)
@@ -138,39 +137,11 @@ namespace gbd.XmpMatcher.Lib
         }
 
 
-        public void ProcessCollisions()
+  
+
+        public CollisionsManager MakeCollisionsManager()
         {
-            var coincidences = _byAttributes.Where(kvp => kvp.Value.Count >= 2);
-            var oneOnOneMatch = coincidences.Where(kvp => IsOneOnOne(kvp.Value));
-
-            Logger.Info($"Found {coincidences.Count()} coincidences, of which {oneOnOneMatch.Count()} 1-on-1 match");
-
-
-        }
-
-        private bool IsOneOnOne(ICollection<FileInfo> files)
-        {
-            if (files.Count != 2)
-                return false;
-
-            bool foundXmp = false;
-            bool foundImage = false;
-
-            foreach (var file in files)
-            {
-                switch (FileDiscriminator.Process(file))
-                {
-                    case FileType.Image:
-                        foundImage = true;
-                        break;
-
-                    case FileType.Xmp:
-                        foundXmp = true;
-                        break;
-                }
-            }
-
-            return (foundImage && foundXmp);
+            return new CollisionsManager(_byAttributes);
         }
     }
 }
