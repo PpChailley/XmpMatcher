@@ -89,6 +89,9 @@ namespace gbd.XmpMatcher.Lib
                             continue;
                     }
 
+                    if (attribs == null)
+                        continue;
+
                     if (_byAttributes.ContainsKey(attribs))
                         _byAttributes[attribs].Add(file);
                     else
