@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExifLibrary", "ExifLibrary\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExifTest", "ExifTest\ExifTest.csproj", "{9F04C806-6BB9-449D-AF51-63E004162C1C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools", "ClassLibrary1\Tools.csproj", "{6BA9332A-9606-4EA7-8A21-74B1F5535A3E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{9F04C806-6BB9-449D-AF51-63E004162C1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F04C806-6BB9-449D-AF51-63E004162C1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F04C806-6BB9-449D-AF51-63E004162C1C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BA9332A-9606-4EA7-8A21-74B1F5535A3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BA9332A-9606-4EA7-8A21-74B1F5535A3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BA9332A-9606-4EA7-8A21-74B1F5535A3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BA9332A-9606-4EA7-8A21-74B1F5535A3E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -64,7 +64,8 @@
     <Compile Include="DateTimeManager.cs" />
     <Compile Include="FileDiscriminator.cs" />
     <Compile Include="FileType.cs" />
-    <Compile Include="MatchingAttributes.cs" />
+    <Compile Include="PhotoAttributes.cs" />
+    <Compile Include="StringIgnoreCaseComparer.cs" />
     <Compile Include="XmpMatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -76,6 +77,12 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ClassLibrary1\Tools.csproj">
+      <Project>{6ba9332a-9606-4ea7-8a21-74b1f5535a3e}</Project>
+      <Name>Tools</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

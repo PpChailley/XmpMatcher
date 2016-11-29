@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
@@ -12,13 +14,17 @@ namespace gbd.XmpMatcher.Lib
         private FileInfo _f;
         private FileType _guessed;
 
-        public static readonly string[] IMAGE_EXTENSIONS = {    ".jpg", ".JPG", ".jpeg", ".JPEG",
-                                                                ".cr2", ".CR2",
-                                                                ".tif", ".TIF",
-                                                                ".dng", ".DNG",
-                                                                ".png", ".PNG",
-                                                                ".gif", ".GIF"
+        public static readonly string[] IMAGE_EXTENSIONS = {    ".cr2", 
+                                                                ".tif", 
+                                                                ".dng", 
+                                                                ".png", 
+                                                                ".gif", 
         };
+
+        public static readonly string[] JPG_EXTENSIONS = {    ".jpg", ".jpeg" };
+
+        private static readonly IEqualityComparer<string> stringCaseIgnoreComparer = new StringIgnoreCaseComparer();
+
 
         private FileDiscriminator(FileInfo f)
         {
@@ -56,12 +62,16 @@ namespace gbd.XmpMatcher.Lib
 
             switch (type)
             {
-                case FileType.Image:
-                        allTestsPass &= IMAGE_EXTENSIONS.Contains(_f.Extension);
+                case FileType.Raw:
+                        allTestsPass &= IMAGE_EXTENSIONS.Contains(_f.Extension, stringCaseIgnoreComparer);
+                    break;
+
+                case FileType.Jpg:
+                    allTestsPass &= JPG_EXTENSIONS.Contains(_f.Extension, stringCaseIgnoreComparer);
                     break;
 
                 case FileType.Xmp:
-                        allTestsPass &= _f.Extension.Equals(".xmp");
+                        allTestsPass &= _f.Extension.Equals(".xmp", StringComparison.InvariantCultureIgnoreCase);
                     break;
 
                 case FileType.Unknown:
@@ -81,12 +91,12 @@ namespace gbd.XmpMatcher.Lib
             var size = _f.Length;
 
             if (size > 1*1024*1024 && size < 40*1024*1024)
-                _guessed = FileType.Image;
+                _guessed = FileType.Raw;
 
             else if (size < 30*1024 && _f.Extension.Equals(".xmp"))
                 _guessed = FileType.Xmp;
             else
-                _guessed = FileType.Image;
+                _guessed = FileType.Raw;
         }
     }
 }

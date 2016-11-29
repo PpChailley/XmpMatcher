@@ -21,6 +21,9 @@ namespace gbd.XmpMatcher.Lib
                 "yyyy-MM-dd'T'HH:mm:ss.FF",
                 "yyyy-MM-dd'T'HH:mm:sszzz",
                 "yyyy-MM-dd'T'HH:mm:ss.FFzzz",
+
+                "yyyy:MM:dd HH:mm:ss",
+                "yyyy:MM:dd HH:mm:ss.FF",
             };
 
             DateTime result;

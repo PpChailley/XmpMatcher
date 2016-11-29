@@ -2,8 +2,9 @@
 {
     public enum FileType
     {
-        Image,
+        Raw,
         Xmp,
+        Jpg,
         Unknown
     }
 }

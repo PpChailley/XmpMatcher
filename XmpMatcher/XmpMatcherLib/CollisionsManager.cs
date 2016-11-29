@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using JetBrains.Annotations;
 using NLog;
 
 namespace gbd.XmpMatcher.Lib
@@ -14,7 +15,7 @@ namespace gbd.XmpMatcher.Lib
 
         internal class Collision
         {
-            public MatchingAttributes Attribs;
+            public PhotoAttributes Attribs;
             public ICollection<FileInfo> Xmp = new List<FileInfo>();
             public ICollection<FileInfo> Images = new List<FileInfo>();
 
@@ -47,7 +48,7 @@ namespace gbd.XmpMatcher.Lib
 
             public Description Desc => new Description() {XmpAmount = Xmp.Count, ImagesAmount = Images.Count};
 
-            public Collision(KeyValuePair<MatchingAttributes, ICollection<FileInfo>> kvp)
+            public Collision(KeyValuePair<PhotoAttributes, ICollection<FileInfo>> kvp)
             {
                 Attribs = kvp.Key;
 
@@ -55,7 +56,7 @@ namespace gbd.XmpMatcher.Lib
                 {
                     switch (FileDiscriminator.Process(fileInfo))
                     {
-                        case FileType.Image:
+                        case FileType.Raw:
                             Images.Add(fileInfo);
                             break;
 
@@ -84,15 +85,15 @@ namespace gbd.XmpMatcher.Lib
 
 
 
-        internal IDictionary<MatchingAttributes, Collision> ByAttributes;
+        internal IDictionary<PhotoAttributes, Collision> ByAttributes;
         internal IDictionary<Collision.BalanceLevel, List<Collision>> ByContentsBalance;
 
 
-        internal CollisionsManager(IDictionary<MatchingAttributes, ICollection<FileInfo>> byAttributes)
+        internal CollisionsManager(IDictionary<PhotoAttributes, ICollection<FileInfo>> inputCollection)
         {
-            ByAttributes = new Dictionary<MatchingAttributes, Collision>();
+            ByAttributes = new Dictionary<PhotoAttributes, Collision>();
             ByContentsBalance = new Dictionary<Collision.BalanceLevel, List<Collision>>();
-            foreach (var kvp in byAttributes)
+            foreach (var kvp in inputCollection)
             {
                 ByAttributes[kvp.Key] = new Collision(kvp);
             }
@@ -122,24 +123,15 @@ namespace gbd.XmpMatcher.Lib
         {
             Logger.Info($"Start linking XMP and images");
 
-            var collisionsToProcess = new List<Collision>();
+            var balancedCollisionsToProcess = new List<Collision>();
             if (ByContentsBalance.ContainsKey(Collision.BalanceLevel.Balanced))
-                collisionsToProcess.AddRange(ByContentsBalance[Collision.BalanceLevel.Balanced]);
+                balancedCollisionsToProcess.AddRange(ByContentsBalance[Collision.BalanceLevel.Balanced]);
 
-            foreach (var collision in collisionsToProcess)
+            foreach (var collision in balancedCollisionsToProcess)
             {
                 try
                 {
-
-                    var xmpOldName = collision.Xmp.Single().Name;
-                    var xmpOldPath = collision.Xmp.Single().Directory;
-                    var imageOldName = collision.Images.Single().Name;
-                    var imageOldPath = collision.Images.Single().Directory;
-
-                    collision.Images.Single().MoveTo(destinationPath);
-                    collision.Xmp.Single().MoveTo($"{destinationPath}\\{imageOldName}.xmp");
-
-                    Logger.Info($"Moved together {xmpOldName} ({xmpOldPath}) and {imageOldName} ({imageOldPath})");
+                    MoveFilesTogether(collision.Xmp.Single(), collision.Images.Single(), destinationPath);
                 }
                 catch (Exception e)
                 {
@@ -147,6 +139,30 @@ namespace gbd.XmpMatcher.Lib
                     // _moveFileFailed.Add(kvp);
                 }
             }
+        }
+
+        private static void MoveFilesTogether(FileInfo xmp, FileInfo image, string destinationPath)
+        {
+            var xmpOldName = xmp.Name;
+            var xmpOldPath = xmp.Directory;
+            var imageOldName = image.Name;
+            var imageOldPath = image.Directory;
+
+
+            if (xmpOldPath.Equals(imageOldPath) &&
+                Path.GetFileNameWithoutExtension(xmpOldName)
+                    .Equals(Path.GetFileNameWithoutExtension(imageOldName)))
+            {
+                Logger.Info($"Matching files {imageOldName} already together. Skipping.");
+                return;
+            }
+
+            Logger.Debug($"Should move together {xmpOldName} and {imageOldName} ({xmpOldPath} AND {imageOldPath})");
+            image.MoveTo(destinationPath);
+            xmp.MoveTo($"{destinationPath}\\{imageOldName}.xmp");
+
+            //Logger.Info($"Moved together {xmpOldName} ({xmpOldPath}) and {imageOldName} ({imageOldPath})");
+
         }
 
         public void ReportUnfixedCollisions()
