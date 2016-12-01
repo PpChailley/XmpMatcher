@@ -102,6 +102,8 @@ namespace gbd.XmpMatcher.Lib
             if (candidate.Attribs.CloseEnoughTo(Attribs) == false)
                 return false;
 
+            _files = null;
+
             Xmp.AddRange(candidate.Xmp);
             Images.AddRange(candidate.Images);
             return true;

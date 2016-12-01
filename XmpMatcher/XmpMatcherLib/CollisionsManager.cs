@@ -19,6 +19,7 @@ namespace gbd.XmpMatcher.Lib
 
         internal IDictionary<PhotoAttributes, Collision> ByAttributes;
         internal IDictionary<Collision.BalanceLevel, List<Collision>> ByContentsBalance;
+        internal List<Collision> BalancedApproximations;
 
 
         internal CollisionsManager(IDictionary<PhotoAttributes, ICollection<FileInfo>> inputCollection)
@@ -116,6 +117,7 @@ namespace gbd.XmpMatcher.Lib
      //       KeyValuePair<PhotoAttributes, Collision>? lastKvp = null;
 
             Collision approx = null;
+            BalancedApproximations =  new List<Collision>(singles.Count);
 
             foreach (var kvp in singles)
             {
@@ -131,7 +133,7 @@ namespace gbd.XmpMatcher.Lib
                     }
                     else
                     {
-                        if (approx != null)
+                        if (approx != null && approx.Files.Count > 1)
                         {
                             Logger.Info(
                                 $"Found {approx.Desc.Balance} approximation: {approx.Files.Count} files @ {approx.Attribs}");
@@ -139,6 +141,7 @@ namespace gbd.XmpMatcher.Lib
                             {
                                 Logger.Debug($"  * {file.Name}  - ({file.DirectoryName}\\{file.Name}");
                             }
+                            BalancedApproximations.Add(approx);
                         }
 
                         approx = new Collision(kvp.Value);
@@ -172,7 +175,9 @@ namespace gbd.XmpMatcher.Lib
                     throw;
                 }
                 
-            }
+            } //end of foreach
+
+            int i = 0;
 
         }
     }
