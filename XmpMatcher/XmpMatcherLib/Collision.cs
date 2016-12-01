@@ -10,19 +10,19 @@ namespace gbd.XmpMatcher.Lib
         public List<FileInfo> Xmp = new List<FileInfo>();
         public List<FileInfo> Images = new List<FileInfo>();
 
-        private List<FileInfo> _files;
+        internal List<FileInfo> FilesInternal;
         public ICollection<FileInfo> Files
         {
             get
             {
-                if (_files == null)
+                if (FilesInternal == null)
                 {
-                    _files = new List<FileInfo>(Xmp.Count + Images.Count);
-                    _files.AddRange(Xmp);
-                    _files.AddRange(Images);
+                    FilesInternal = new List<FileInfo>(Xmp.Count + Images.Count);
+                    FilesInternal.AddRange(Xmp);
+                    FilesInternal.AddRange(Images);
                 }
 
-                return _files;
+                return FilesInternal;
             }
         }
 
@@ -95,18 +95,6 @@ namespace gbd.XmpMatcher.Lib
             SeveralImages,
             SeveralXmpForOneImage,
             Unknown,
-        }
-
-        public bool TryMatch(Collision candidate)
-        {
-            if (candidate.Attribs.CloseEnoughTo(Attribs) == false)
-                return false;
-
-            _files = null;
-
-            Xmp.AddRange(candidate.Xmp);
-            Images.AddRange(candidate.Images);
-            return true;
         }
     }
 }

@@ -13,9 +13,6 @@ namespace gbd.XmpMatcher.Lib
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
 
- 
-
-
 
         internal IDictionary<PhotoAttributes, Collision> ByAttributes;
         internal IDictionary<Collision.BalanceLevel, List<Collision>> ByContentsBalance;
@@ -113,72 +110,33 @@ namespace gbd.XmpMatcher.Lib
                                                     att.Value.Desc.Balance == Collision.BalanceLevel.XmpOnly)
                 .OrderBy(kvp => kvp.Key.DateShutter).ToList();
 
-   //         DateTime? lastDate = null;
-     //       KeyValuePair<PhotoAttributes, Collision>? lastKvp = null;
-
-            Collision approx = null;
+            Collision currentApproxTry = null;
             BalancedApproximations =  new List<Collision>(singles.Count);
 
             foreach (var kvp in singles)
             {
                 try
                 {
-                    if (approx != null && approx.TryMatch(kvp.Value))
+                    if (currentApproxTry.TryApproxMerge(kvp.Value))
+                        continue;
+                     
+                    if (currentApproxTry != null && currentApproxTry.Files.Count > 1)
                     {
-                        Logger.Debug($"Collision APPROX: {approx} with {kvp.Value}");
-                        foreach (var file in kvp.Value.Files)
-                        {
-                            Logger.Debug($"  - FILE {file.Name}    \t {kvp.Key}");
-                        }
-                    }
-                    else
-                    {
-                        if (approx != null && approx.Files.Count > 1)
-                        {
-                            Logger.Info(
-                                $"Found {approx.Desc.Balance} approximation: {approx.Files.Count} files @ {approx.Attribs}");
-                            foreach (var file in approx.Files)
-                            {
-                                Logger.Debug($"  * {file.Name}  - ({file.DirectoryName}\\{file.Name}");
-                            }
-                            BalancedApproximations.Add(approx);
-                        }
-
-                        approx = new Collision(kvp.Value);
+                        Logger.Debug($"Approximate collision built (see below)");
+                        currentApproxTry.DescribeToLogger(LogLevel.Debug);
+                        BalancedApproximations.Add(currentApproxTry);
+                        Logger.Debug("");
                     }
 
-
-                    /*
-
-                    if (lastDate != null && lastKvp != null && 
-                        kvp.Key.DateShutter.Value.Subtract(lastDate.Value).TotalMilliseconds < 2000)
-                    {
-                        Logger.Info($"Files *may* match: {kvp.Value.Files.Single().Name} and {lastKvp.Value.Value.Files.Single().Name}");
-                        Logger.Debug($"Path A : {kvp.Value.Files.Single().DirectoryName}\\{kvp.Value.Files.Single().Name}");
-                        Logger.Debug($"Path B : {lastKvp.Value.Value.Files.Single().DirectoryName}\\{lastKvp.Value.Value.Files.Single().Name}");
-                    }
-                    else
-                    {
-                        lastKvp = kvp;
-                        lastDate = kvp.Value.Attribs.DateShutter;
-                    }
-                    */
+                        currentApproxTry = new Collision(kvp.Value);
                 }
                 catch (NullReferenceException nre)
                 {
                     Logger.Warn(nre, $"Null pointer when processing collision {kvp.Key}");
-                    foreach (var file in kvp.Value.Files)
-                    {
-                        Logger.Warn($"file in collision: {file.DirectoryName}\\{file.Name}");
-                    }
-                    
+                    kvp.Value.DescribeToLogger(LogLevel.Warn);
                     throw;
                 }
-                
             } //end of foreach
-
-            int i = 0;
-
         }
     }
 }
