@@ -117,6 +117,8 @@ namespace gbd.XmpMatcher.Lib
                 }
 
             }
+
+            Logger.Info($"Finished sorting {_unsortedFiles.Count} files into images and XMP");
         }
 
         private static PhotoAttributes GetRawAttributes(FileInfo file)

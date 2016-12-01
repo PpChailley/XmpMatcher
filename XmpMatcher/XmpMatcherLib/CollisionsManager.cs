@@ -46,9 +46,6 @@ namespace gbd.XmpMatcher.Lib
 
         }
 
-
-
-
         public void LinkXmpAndImagePairs(string destinationPath)
         {
             Logger.Info($"Start linking XMP and images");
@@ -136,7 +133,7 @@ namespace gbd.XmpMatcher.Lib
                     kvp.Value.DescribeToLogger(LogLevel.Warn);
                     throw;
                 }
-            } //end of foreach
+            } 
         }
     }
 }

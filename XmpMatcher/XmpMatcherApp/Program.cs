@@ -10,8 +10,6 @@ namespace gbd.XmpMatcher.App
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
 
-
-
         public static void Main(string[] args)
         {
             Logger.Info("Starting Xmp Matcher App");
@@ -23,15 +21,9 @@ namespace gbd.XmpMatcher.App
 
             var matcher = new Lib.XmpMatcher(files);
             matcher.DiscriminateFileTypes();
-
-            Logger.Info("All files discriminated");
-
             var collisionMgr = matcher.MakeCollisionsManager();
-
             collisionMgr.DetectCollisions();
             collisionMgr.LinkXmpAndImagePairs(@"R:\StoreDisk recovery\RECOVERED critical\Relinked pairs");
-
-
             collisionMgr.GuessNextMatchings();
 
 
