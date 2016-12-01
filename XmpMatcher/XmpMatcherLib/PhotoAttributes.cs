@@ -25,8 +25,15 @@ namespace gbd.XmpMatcher.Lib
             FocalLength = focalLength;
         }
 
-
- 
+        public PhotoAttributes(PhotoAttributes a)
+        {
+            DateShutter = a.DateShutter;
+            FocalPlaneXResolution = a.FocalPlaneXResolution;
+            FocalPlaneYResolution = a.FocalPlaneYResolution;
+            FNumber = a.FNumber;
+            ExposureTime = a.ExposureTime;
+            FocalLength = a.FocalLength;
+        }
 
         public override string ToString()
         {
@@ -74,6 +81,20 @@ namespace gbd.XmpMatcher.Lib
                 return false;
 
             return Equals((PhotoAttributes) obj);
+        }
+
+        public bool CloseEnoughTo(PhotoAttributes attribs)
+        {
+            if (DateShutter == null && attribs.DateShutter == null)
+                return true;
+
+            if ((DateShutter == null) != (attribs.DateShutter == null))
+                return false;
+
+            if (DateShutter.Value.Subtract(attribs.DateShutter.Value).TotalMilliseconds < 1600)
+                return true;
+
+            return false;
         }
     }
 }

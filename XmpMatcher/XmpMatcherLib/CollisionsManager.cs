@@ -13,75 +13,7 @@ namespace gbd.XmpMatcher.Lib
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
 
-        internal class Collision
-        {
-            public PhotoAttributes Attribs;
-            public ICollection<FileInfo> Xmp = new List<FileInfo>();
-            public ICollection<FileInfo> Images = new List<FileInfo>();
-
-            public class Description
-            {
-                public int XmpAmount = 0;
-                public int ImagesAmount = 0;
-
-                public BalanceLevel Balance
-                {
-                    get
-                    {
-                        if (ImagesAmount == 0 && XmpAmount == 0)
-                            return BalanceLevel.Empty;
-                        else if (ImagesAmount > 0 && XmpAmount == 0)
-                            return BalanceLevel.ImagesOnly;
-                        else if (ImagesAmount == 0 && XmpAmount > 0)
-                            return BalanceLevel.XmpOnly;
-                        else if (ImagesAmount == 1 && XmpAmount == 1)
-                            return BalanceLevel.Balanced;
-                        else if (ImagesAmount == 1 && XmpAmount > 1)
-                            return BalanceLevel.SeveralXmpForOneImage;
-                        else if (ImagesAmount > 1)
-                            return BalanceLevel.SeveralImages;
-                        else
-                            return BalanceLevel.Unknown;
-            }
-        }
-            }
-
-            public Description Desc => new Description() {XmpAmount = Xmp.Count, ImagesAmount = Images.Count};
-
-            public Collision(KeyValuePair<PhotoAttributes, ICollection<FileInfo>> kvp)
-            {
-                Attribs = kvp.Key;
-
-                foreach (var fileInfo in kvp.Value)
-                {
-                    switch (FileDiscriminator.Process(fileInfo))
-                    {
-                        case FileType.Raw:
-                            Images.Add(fileInfo);
-                            break;
-
-                        case FileType.Xmp:
-                            Xmp.Add(fileInfo);
-                            break;
-
-                        case FileType.Unknown:
-                        default:
-                            throw new InvalidOperationException();
-                    }
-                }
-            }
-
-            public enum BalanceLevel
-            {
-                Empty,
-                ImagesOnly,
-                XmpOnly,
-                Balanced,
-                SeveralImages,
-                SeveralXmpForOneImage,
-                Unknown,
-            }
-        }
+ 
 
 
 
@@ -148,26 +80,100 @@ namespace gbd.XmpMatcher.Lib
             var imageOldName = image.Name;
             var imageOldPath = image.Directory;
 
+            var xmpNameNoExt = Path.GetFileNameWithoutExtension(xmpOldName);
+            var imageNameNoExt = Path.GetFileNameWithoutExtension(imageOldName);
 
-            if (xmpOldPath.Equals(imageOldPath) &&
-                Path.GetFileNameWithoutExtension(xmpOldName)
-                    .Equals(Path.GetFileNameWithoutExtension(imageOldName)))
+            if (xmpOldPath.Equals(imageOldPath) && xmpNameNoExt.Equals(imageNameNoExt))
             {
                 Logger.Info($"Matching files {imageOldName} already together. Skipping.");
                 return;
             }
 
-            Logger.Debug($"Should move together {xmpOldName} and {imageOldName} ({xmpOldPath} AND {imageOldPath})");
-            image.MoveTo(destinationPath);
-            xmp.MoveTo($"{destinationPath}\\{imageOldName}.xmp");
+            string newName = $"{imageNameNoExt}";
 
-            //Logger.Info($"Moved together {xmpOldName} ({xmpOldPath}) and {imageOldName} ({imageOldPath})");
+            Logger.Debug($"Should move together {xmpOldName} and {imageOldName} ({xmpOldPath} AND {imageOldPath})");
+            image.MoveTo($"{destinationPath}\\{newName}{image.Extension}");
+            xmp.MoveTo($"{destinationPath}\\{newName}.xmp");
+
+            Logger.Info($"Moved together {xmpOldName} ({xmpOldPath}) and {imageOldName} ({imageOldPath})");
 
         }
 
         public void ReportUnfixedCollisions()
         {
-            throw new NotImplementedException();
+           // throw new NotImplementedException();
+
+            int i = 0;
+        }
+
+        public void GuessNextMatchings()
+        {
+            var singles = ByAttributes.Where(att => att.Value.Desc.Balance == Collision.BalanceLevel.ImagesOnly ||
+                                                    att.Value.Desc.Balance == Collision.BalanceLevel.XmpOnly)
+                .OrderBy(kvp => kvp.Key.DateShutter).ToList();
+
+   //         DateTime? lastDate = null;
+     //       KeyValuePair<PhotoAttributes, Collision>? lastKvp = null;
+
+            Collision approx = null;
+
+            foreach (var kvp in singles)
+            {
+                try
+                {
+                    if (approx != null && approx.TryMatch(kvp.Value))
+                    {
+                        Logger.Debug($"Collision APPROX: {approx} with {kvp.Value}");
+                        foreach (var file in kvp.Value.Files)
+                        {
+                            Logger.Debug($"  - FILE {file.Name}    \t {kvp.Key}");
+                        }
+                    }
+                    else
+                    {
+                        if (approx != null)
+                        {
+                            Logger.Info(
+                                $"Found {approx.Desc.Balance} approximation: {approx.Files.Count} files @ {approx.Attribs}");
+                            foreach (var file in approx.Files)
+                            {
+                                Logger.Debug($"  * {file.Name}  - ({file.DirectoryName}\\{file.Name}");
+                            }
+                        }
+
+                        approx = new Collision(kvp.Value);
+                    }
+
+
+                    /*
+
+                    if (lastDate != null && lastKvp != null && 
+                        kvp.Key.DateShutter.Value.Subtract(lastDate.Value).TotalMilliseconds < 2000)
+                    {
+                        Logger.Info($"Files *may* match: {kvp.Value.Files.Single().Name} and {lastKvp.Value.Value.Files.Single().Name}");
+                        Logger.Debug($"Path A : {kvp.Value.Files.Single().DirectoryName}\\{kvp.Value.Files.Single().Name}");
+                        Logger.Debug($"Path B : {lastKvp.Value.Value.Files.Single().DirectoryName}\\{lastKvp.Value.Value.Files.Single().Name}");
+                    }
+                    else
+                    {
+                        lastKvp = kvp;
+                        lastDate = kvp.Value.Attribs.DateShutter;
+                    }
+                    */
+                }
+                catch (NullReferenceException nre)
+                {
+                    Logger.Warn(nre, $"Null pointer when processing collision {kvp.Key}");
+                    foreach (var file in kvp.Value.Files)
+                    {
+                        Logger.Warn($"file in collision: {file.DirectoryName}\\{file.Name}");
+                    }
+                    
+                    throw;
+                }
+                
+            }
+
         }
     }
 }
