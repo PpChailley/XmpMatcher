@@ -1,13 +1,30 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using gbd.Tools.Maths;
 using gbd.Tools.Time;
 using JetBrains.Annotations;
+using MetadataExtractor;
+using NLog;
+using Directory = MetadataExtractor.Directory;
 
 namespace gbd.XmpMatcher.Lib
 {
     public class PhotoAttributes: IEquatable<PhotoAttributes>
     {
-        
+
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
+        private static readonly Regex RegexX = new Regex("exif:FocalPlaneXResolution=.(.*?).$", RegexOptions.Multiline);
+        private static readonly Regex RegexY = new Regex("exif:FocalPlaneYResolution=.(.*?).$", RegexOptions.Multiline);
+        private static readonly Regex RegexFNumber = new Regex("exif:FNumber=.(.*?).$", RegexOptions.Multiline);
+        private static readonly Regex RegexFocal = new Regex("exif:FocalLength=.(.*?).$", RegexOptions.Multiline);
+        private static readonly Regex RegexTime = new Regex("exif:ExposureTime=.(.*?).$", RegexOptions.Multiline);
+
+
+
         public readonly DateTime? DateShutter;
         public readonly double? FocalPlaneXResolution;
         public readonly double? FocalPlaneYResolution;
@@ -15,15 +32,65 @@ namespace gbd.XmpMatcher.Lib
         public readonly double? ExposureTime;
         public readonly double? FocalLength;
 
-        public PhotoAttributes(DateTime? dateShutter, double? fNumber, double? exposureTime, double? focalLength, double? focalPlaneXResolution, double? focalPlaneYResolution)
+        public PhotoAttributes(FileInfo file)
         {
-            DateShutter = dateShutter;
-            FocalPlaneXResolution = focalPlaneXResolution;
-            FocalPlaneYResolution = focalPlaneYResolution;
-            FNumber = fNumber;
-            ExposureTime = exposureTime;
-            FocalLength = focalLength;
+            var type = FileDiscriminator.Process(file);
+            switch (type)
+            {
+                case FileType.Raw:
+                    var dirs = ImageMetadataReader.ReadMetadata(file.FullName);
+                    var subIfd = dirs.SingleOrDefault(d => d.Name.Equals("Exif SubIFD"));
+
+                    if (subIfd == null)
+                        return;
+
+                    var tagFNumber = subIfd.Tags.Single(t => t.Name.Equals("F-Number"));
+                    var tagFocalLen = subIfd.Tags.Single(t => t.Name.Equals("Focal Length"));
+                    var tagX = subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Focal Plane X Resolution"));
+                    var tagY = subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Focal Plane Y Resolution"));
+                    var tagDateOrig = subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Date/Time Original"));
+                    var tagTime = subIfd.Tags.SingleOrDefault(t => t.Name.Equals("Exposure Time"));
+
+
+                    DateShutter = DateTimeManager.Parse(tagDateOrig?.Description);
+                    FNumber = double.Parse(tagFNumber.Description.Replace("f/", ""));
+                    ExposureTime = Fraction.Parse(tagTime.Description.Replace("sec", ""));
+                    FocalPlaneXResolution = Fraction.Parse(tagX?.Description.Replace("inches", ""));
+                    FocalPlaneYResolution = Fraction.Parse(tagY?.Description.Replace("inches", ""));
+                    FocalLength = double.Parse(tagFocalLen.Description.Replace("mm", ""));
+
+                    break;
+
+                case FileType.Xmp:
+                    var xmp = file.OpenText().ReadToEnd();
+                    
+                    var matchFNumber = RegexFNumber.Match(xmp);
+                    var matchX = RegexX.Match(xmp);
+                    var matchY = RegexY.Match(xmp);
+                    var matchFocal = RegexFocal.Match(xmp);
+                    var matchTime = RegexTime.Match(xmp);
+
+                    DateShutter = DateTimeManager.FindAndParse(xmp, @"exif:DateTimeOriginal=");
+                    FNumber = Fraction.Parse(matchFNumber.Groups[1].Value);
+                    ExposureTime = Fraction.Parse(matchTime.Groups[1].Value);
+                    FocalLength = Fraction.Parse(matchFocal.Groups[1].Value);
+                    FocalPlaneXResolution = Fraction.Parse(matchX.Groups[1].Value);
+                    FocalPlaneYResolution = Fraction.Parse(matchY.Groups[1].Value);
+
+                    break;
+                    
+                case FileType.Jpg:
+                case FileType.Unknown:
+                default:
+                    Logger.Warn($"Cannot process {type} file: {file.Name}");
+                    throw new NotImplementedException();
+            }
+
+            Logger.Debug($"File {file.Name} has attributes {this}");
+
         }
+
+
 
         public PhotoAttributes(PhotoAttributes a)
         {
