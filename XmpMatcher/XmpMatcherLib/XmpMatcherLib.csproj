@@ -68,6 +68,7 @@
     <Compile Include="FileType.cs" />
     <Compile Include="PhotoAttributes.cs" />
     <Compile Include="StringIgnoreCaseComparer.cs" />
+    <Compile Include="WPFMetadataReader.cs" />
     <Compile Include="XmpMatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

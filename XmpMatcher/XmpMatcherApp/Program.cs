@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using gbd.XmpMatcher.Lib;
 using NLog;
@@ -22,7 +23,11 @@ namespace gbd.XmpMatcher.App
             var matcher = new Lib.XmpMatcher(files);
             matcher.DiscriminateFileTypes();
             var collisionMgr = matcher.MakeCollisionsManager();
+
             collisionMgr.DetectCollisions();
+
+            throw new Exception();
+
             collisionMgr.LinkXmpAndImagePairs(@"R:\StoreDisk recovery\RECOVERED critical\Relinked pairs");
             collisionMgr.GuessNextMatchings();
 
@@ -37,9 +42,15 @@ namespace gbd.XmpMatcher.App
             var extensions = FileDiscriminator.IMAGE_EXTENSIONS;
 
             //ConfigurePathsLeftOversFromPreviousRun(files, extensions);
-            ConfigurePathsRealCase(files, extensions);
+            //ConfigurePathsRealCase(files, extensions);
             //ConfigurePathsAlreadyMatching(files, extensions);
+            ConfigurePathsTestData(files, extensions);
             //ConfigurePathsSmallSubset(files);
+        }
+
+        private static void ConfigurePathsTestData(List<string> files, string[] extensions)
+        {
+            files.AddRange(IncludeFilesIn(@"D:\Users\pipo\Dropbox\IsoFiling\Dev & Geek\XmpMatcher\XmpMatcher\XmpMatcher\TestData", "*.xmp", extensions));
         }
 
         private static void ConfigurePathsLeftOversFromPreviousRun(List<string> files, string[] extensions)
@@ -59,8 +70,8 @@ namespace gbd.XmpMatcher.App
         private static void ConfigurePathsAlreadyMatching(List<string> files, string[] extensions)
         {
             //var path = @"D:\Photo\TempStoreWhileStoreDriveInMaintenance";
-            //var path = @"D:\Photo\TempStoreWhileStoreDriveInMaintenance\2016\08 - Asco";
-            var path = @"D:\Users\pipo\Dropbox\IsoFiling\Dev & Geek\XmpMatcher\XmpMatcher\SampleData";
+            var path = @"D:\Photo\TempStoreWhileStoreDriveInMaintenance\2016\08 - Asco";
+
             files.AddRange(IncludeFilesIn(path, "*.xmp", extensions));
         }
 

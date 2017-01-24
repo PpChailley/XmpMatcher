@@ -7,7 +7,9 @@ using gbd.Tools.Maths;
 using gbd.Tools.Time;
 using JetBrains.Annotations;
 using MetadataExtractor;
+using MetadataExtractor.Formats.Xmp;
 using NLog;
+using XmpCore.Impl;
 using Directory = MetadataExtractor.Directory;
 
 namespace gbd.XmpMatcher.Lib
@@ -26,6 +28,7 @@ namespace gbd.XmpMatcher.Lib
 
 
         public readonly DateTime? DateShutter;
+        public readonly DateTime? DateCreatedPhotoshop;
         public readonly double? FocalPlaneXResolution;
         public readonly double? FocalPlaneYResolution;
         public readonly double? FNumber;
@@ -41,6 +44,9 @@ namespace gbd.XmpMatcher.Lib
                     var dirs = ImageMetadataReader.ReadMetadata(file.FullName);
                     var subIfd = dirs.SingleOrDefault(d => d.Name.Equals("Exif SubIFD"));
 
+                    var xmpMeta = dirs.OfType<XmpDirectory>();
+                    
+
                     if (subIfd == null)
                         return;
 
@@ -53,11 +59,13 @@ namespace gbd.XmpMatcher.Lib
 
 
                     DateShutter = DateTimeManager.Parse(tagDateOrig?.Description);
+                    DateCreatedPhotoshop = WpfMetadataReader.GetPhotoshopCreateDate(file);
                     FNumber = double.Parse(tagFNumber.Description.Replace("f/", ""));
                     ExposureTime = Fraction.Parse(tagTime.Description.Replace("sec", ""));
                     FocalPlaneXResolution = Fraction.Parse(tagX?.Description.Replace("inches", ""));
                     FocalPlaneYResolution = Fraction.Parse(tagY?.Description.Replace("inches", ""));
                     FocalLength = double.Parse(tagFocalLen.Description.Replace("mm", ""));
+                    
 
                     break;
 
@@ -76,6 +84,7 @@ namespace gbd.XmpMatcher.Lib
                     FocalLength = Fraction.Parse(matchFocal.Groups[1].Value);
                     FocalPlaneXResolution = Fraction.Parse(matchX.Groups[1].Value);
                     FocalPlaneYResolution = Fraction.Parse(matchY.Groups[1].Value);
+                    DateCreatedPhotoshop = DateTimeManager.FindAndParse(xmp, @"photoshop:DateCreated=");
 
                     break;
                     
@@ -90,6 +99,7 @@ namespace gbd.XmpMatcher.Lib
 
         }
 
+        
 
 
         public PhotoAttributes(PhotoAttributes a)
